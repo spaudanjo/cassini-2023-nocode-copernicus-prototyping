@@ -6,14 +6,15 @@ import odc.stac
 import matplotlib.pyplot as plt
 from pystac.extensions.eo import EOExtension as eo
 
-from flask import Flask, send_file, render_template
-from flask import Flask
+from flask import Flask, send_file, render_template, abort
 import io
+import sys  # Make sure to import sys
+
 
 
 app = Flask(__name__)
 
-def plot_image(): 
+def plot_image(x, y, z): 
     catalog = pystac_client.Client.open(
         "https://planetarycomputer.microsoft.com/api/stac/v1",
         modifier=planetary_computer.sign_inplace,
@@ -93,6 +94,35 @@ def symbol():
 @app.route('/myth.html')
 def myth():
     return render_template('myth.html', the_title='Tiger in Myth and Legend')
+
+
+@app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
+def tiles(z, x, y):
+    try:
+        # Validate or transform x, y, z if necessary
+        # ...
+
+        # Generate image data for the requested tile
+        image_data = plot_image(x, y, z)
+
+        # Save the image data to a BytesIO object
+        img_bytes = io.BytesIO()
+        image_data.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+
+        # Send the image as a response
+        return send_file(img_bytes, mimetype='image/png')
+    except Exception as e:
+        # Handle exceptions, such as tile out of range
+        # logger.exception(f"Failed to generate tile z={z} x={x} y={y}")
+
+        print(f"An error occurred: {e}", file=sys.stderr)
+        # You can also include more details like the traceback
+        import traceback
+        print(traceback.format_exc(), file=sys.stderr)
+
+        abort(404, description="Tile not found")
+
 
 if __name__ == '__main__':
     app.run(debug=True)
