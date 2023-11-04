@@ -99,19 +99,23 @@ def myth():
 @app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
 def tiles(z, x, y):
     try:
-        # Validate or transform x, y, z if necessary
-        # ...
+        fig, ax = plt.subplots(figsize=(10, 10))
 
-        # Generate image data for the requested tile
-        image_data = plot_image(x, y, z)
+        data = plot_image(x, y, z)
 
-        # Save the image data to a BytesIO object
+        data[["red", "green", "blue"]].to_array().plot.imshow(robust=True, ax=ax)
+
+        ax.set_title("Natural Color")
+
+        # Save the figure to a BytesIO object
         img_bytes = io.BytesIO()
-        image_data.save(img_bytes, format='PNG')
+        plt.savefig(img_bytes)
         img_bytes.seek(0)
+        plt.close()
 
-        # Send the image as a response
+        # Send the bytes in response
         return send_file(img_bytes, mimetype='image/png')
+
     except Exception as e:
         # Handle exceptions, such as tile out of range
         # logger.exception(f"Failed to generate tile z={z} x={x} y={y}")
