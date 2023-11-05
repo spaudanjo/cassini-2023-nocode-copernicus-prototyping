@@ -6,21 +6,23 @@ import odc.stac
 import matplotlib.pyplot as plt
 from pystac.extensions.eo import EOExtension as eo
 
-from flask import Flask, send_file, render_template, abort
+from flask import Flask, send_file, render_template, abort, request
 import io
 import sys  # Make sure to import sys
 
+# import mercantile  # You might need to install this package
 
 
 app = Flask(__name__)
 
-def plot_image(x, y, z): 
+
+def plot_image(bbox_of_interest): 
     catalog = pystac_client.Client.open(
         "https://planetarycomputer.microsoft.com/api/stac/v1",
         modifier=planetary_computer.sign_inplace,
     )
 
-    bbox_of_interest = [89.419391,22.732522,89.671905,22.853430] # Bounding box of study
+    # bbox_of_interest = [89.419391,22.732522,89.671905,22.853430] # Bounding box of study
     time_of_interest = "2022-01-01/2022-12-31" # Define start and end date
 
     search = catalog.search(
@@ -59,49 +61,25 @@ def plot_image(x, y, z):
     # ax.set_title("Natural Color")
 
 
-
-
-
-# two decorators, same function
-@app.route('/')
-@app.route('/index.html')
-def index():
-    fig, ax = plt.subplots(figsize=(10, 10))
-
-    data = plot_image()
-
-    data[["red", "green", "blue"]].to_array().plot.imshow(robust=True, ax=ax)
-
-    ax.set_title("Natural Color")
-
-    # Save the figure to a BytesIO object
-    img_bytes = io.BytesIO()
-    plt.savefig(img_bytes)
-    img_bytes.seek(0)
-    plt.close()
-
-    # Send the bytes in response
-    return send_file(img_bytes, mimetype='image/png')
-
-
-
-    # return render_template('index.html', the_title='Tiger Home Page')
-
-@app.route('/symbol.html')
-def symbol():
-    return render_template('symbol.html', the_title='Tiger As Symbol')
-
-@app.route('/myth.html')
-def myth():
-    return render_template('myth.html', the_title='Tiger in Myth and Legend')
-
-
-@app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
-def tiles(z, x, y):
+@app.route('/tiles')
+def tiles():
+    # Parse bbox and zoom from the query parameters
     try:
+        bbox = request.args.get('bbox', type=str)
+        zoom = request.args.get('zoom', type=int)
+
+        # if not bbox or not zoom:
+        #     abort(400, description="Missing bbox or zoom parameters")
+
+        if not bbox:
+            abort(400, description="Missing bbox parameters")
+
+        # Split the bbox into individual components
+        bbox = [float(coord) for coord in bbox.split(',')]
+
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        data = plot_image(x, y, z)
+        data = plot_image(bbox)
 
         data[["red", "green", "blue"]].to_array().plot.imshow(robust=True, ax=ax)
 
